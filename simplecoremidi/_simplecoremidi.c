@@ -3,28 +3,6 @@
 #include <Python/Python.h>
 
 
-int main(int argc, char* argv[]) {
-  Byte midiData[] = {0x90, 0x3c, 0x80};
-  MIDIClientRef theMidiClient;
-  MIDIEndpointRef midiOut;
-  MIDIPortRef outPort;
-  MIDIPacketList *pktList;
-  MIDIPacket *pkt;
-
-  MIDIClientCreate(CFSTR("Magical MIDI"), NULL, NULL, &theMidiClient);
-  MIDISourceCreate(theMidiClient, CFSTR("Magical MIDI Source"), &midiOut);
-  MIDIOutputPortCreate(theMidiClient, CFSTR("Magical MIDI Out Port"), &outPort);
-
-  pktList = (MIDIPacketList*) malloc(1024);
-  pkt = MIDIPacketListInit(pktList);
-
-  pkt = MIDIPacketListAdd(pktList, 1024, pkt, 0, 3, midiData);
-  MIDISend(outPort, midiOut, pktList);
-
-  return 0;
-}
-
-
 typedef struct _CMData {
   MIDIClientRef theMidiClient;
   MIDIEndpointRef midiOut;
@@ -54,7 +32,8 @@ sendMidi(PyObject* self, PyObject* args) {
   MIDIPacketList *pktList;
   MIDIPacket *pkt;
   Byte* midiDataToSend;
-
+  int i;
+  
   midiData = PyTuple_GetItem(args, 0);
   nBytes = PyTuple_Size(midiData);
 
@@ -62,7 +41,7 @@ sendMidi(PyObject* self, PyObject* args) {
 
   midiDataToSend = (Byte*) malloc(nBytes);
 
-  for (int i = 0; i < nBytes; i++) {
+  for (i = 0; i < nBytes; i++) {
     PyObject* midiByte;
 
     midiByte = PyTuple_GetItem(midiData, i);
@@ -95,6 +74,6 @@ static PyMethodDef SimpleCoreMidiMethods[] = {
 
 
 PyMODINIT_FUNC
-initsimplecoremidi(void) {
-  (void) Py_InitModule("simplecoremidi", SimpleCoreMidiMethods);
+init_simplecoremidi(void) {
+  (void) Py_InitModule("_simplecoremidi", SimpleCoreMidiMethods);
 }

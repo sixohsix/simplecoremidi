@@ -9,7 +9,9 @@ install_requires = [
 
 _scm_module = Extension(
     'simplecoremidi._simplecoremidi',
-    sources=['simplecoremidi/_simplecoremidi.cpp'],
+    sources=['simplecoremidi/_simplecoremidi.c'],
+    extra_link_args=['-framework', 'CoreFoundation',
+                     '-framework', 'CoreMIDI']
     )
 
 setup(name='simplecoremidi',
