@@ -3,6 +3,12 @@ import sys, os
 
 version = '0.2'
 
+if sys.platform != 'darwin':
+    raise Exception(
+        "simplecoremidi only works on Mac OS X (plaform: darwin). "
+        "Your system claims to be {}, which won't work.".format(sys.platform))
+
+
 install_requires = [
     # -*- Extra requirements: -*-
     ]
