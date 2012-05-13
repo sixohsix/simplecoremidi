@@ -1,4 +1,3 @@
-
 #include <CoreMIDI/CoreMIDI.h>
 #include <Python/Python.h>
 
@@ -20,6 +19,7 @@ setupMidiOutput(PyObject* self, PyObject* args) {
                    &(_cmData.midiOut));
   MIDIOutputPortCreate(_cmData.theMidiClient, CFSTR("Magical MIDI Out Port"),
                        &(_cmData.outPort));
+
   Py_INCREF(Py_None);
   return Py_None;
 }
@@ -33,11 +33,9 @@ sendMidi(PyObject* self, PyObject* args) {
   MIDIPacket *pkt;
   Byte* midiDataToSend;
   int i;
-  
+
   midiData = PyTuple_GetItem(args, 0);
   nBytes = PyTuple_Size(midiData);
-
-  printf("n data bytes: %ld", nBytes);
 
   midiDataToSend = (Byte*) malloc(nBytes);
 
@@ -46,20 +44,23 @@ sendMidi(PyObject* self, PyObject* args) {
 
     midiByte = PyTuple_GetItem(midiData, i);
     midiDataToSend[i] = PyInt_AsLong(midiByte);
-    printf("data byte: %d", midiDataToSend[i]);
+    printf("%d, ", midiDataToSend[i]);
   }
 
   pktList = (MIDIPacketList*) malloc(1024);
   pkt = MIDIPacketListInit(pktList);
-
   pkt = MIDIPacketListAdd(pktList, 1024, pkt, 0, nBytes, midiDataToSend);
 
-  if (MIDISend(_cmData.outPort, _cmData.midiOut, pktList)) {
-    printf("Failed to send the midi.");
+  if (pkt == NULL || MIDISend(_cmData.outPort, _cmData.midiOut, pktList)) {
+    printf("failed to send the midi.\n");
+  } else {
+    printf("sent!\n");
   }
 
   free(pktList);
   free(midiDataToSend);
+
+  //CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, false);
 
   Py_INCREF(Py_None);
   return Py_None;
@@ -76,4 +77,37 @@ static PyMethodDef SimpleCoreMidiMethods[] = {
 PyMODINIT_FUNC
 init_simplecoremidi(void) {
   (void) Py_InitModule("_simplecoremidi", SimpleCoreMidiMethods);
+}
+
+
+int main(int argc, char* args[]) {
+  MIDIClientRef theMidiClient;
+  MIDIEndpointRef midiOut;
+  MIDIPortRef outPort;
+  char pktBuffer[1024];
+  MIDIPacketList* pktList = (MIDIPacketList*) pktBuffer;
+  MIDIPacket* pkt;
+  Byte midiDataToSend[] = {0x91, 0x3c, 0x40};
+  int i;
+
+  MIDIClientCreate(CFSTR("Magical MIDI"), NULL, NULL,
+                   &(theMidiClient));
+  MIDISourceCreate(theMidiClient, CFSTR("Magical MIDI Source"),
+                   &(midiOut));
+  MIDIOutputPortCreate(theMidiClient, CFSTR("Magical MIDI Out Port"),
+                       &(outPort));
+
+  pkt = MIDIPacketListInit(pktList);
+  pkt = MIDIPacketListAdd(pktList, 1024, pkt, 0, 3, midiDataToSend);
+
+  for (i = 0; i < 100; i++) {
+    if (pkt == NULL || MIDISend(outPort, midiOut, pktList)) {
+      printf("failed to send the midi.\n");
+    } else {
+      printf("sent!\n");
+    }
+    sleep(1);
+  }
+
+  return 0;
 }
