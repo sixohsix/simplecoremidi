@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages, Extension
 import sys, os
 
-version = '0.2'
+version = '0.1.0'
 
 if sys.platform != 'darwin':
     raise Exception(
