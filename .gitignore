@@ -1,0 +1,10 @@
+## Python
+simplecoremidi.egg-info
+*.pyc
+*.bak
+*.orig
+*.rej
+*.so
+*~
+dist
+build
