@@ -27,6 +27,10 @@ setup(name='simplecoremidi',
       # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
       classifiers=[
         "Programming Language :: Python :: 2.7",
+        "Environment :: MacOS X",
+        "Intended Audience :: Developers",
+        "Development Status :: 3 - Alpha",
+        "Topic :: Multimedia :: Sound/Audio :: MIDI",
         "License :: OSI Approved :: MIT License",
         ],
       keywords='osx, CoreMIDI, MIDI, Mac OS X',
