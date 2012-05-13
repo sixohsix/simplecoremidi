@@ -1,1 +1,1 @@
-from .core import setup_midi_output, send_midi
+from .core import send_midi
