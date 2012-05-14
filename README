@@ -1,18 +1,18 @@
 Simple CoreMIDI for Python
-====
+==========================
 
 Simple CoreMIDI for Python is the simplest way of using MIDI in Python
 on Mac OS X. Period.
 
 
 Installation
-----
+------------
 
     pip install simplecoremidi
 
 
 Usage
-----
+-----
 
 To send midi out from your application::
 
@@ -36,8 +36,7 @@ Look at the example in the simplecoremidi/examples directory.
 
 
 Notes
-----
+-----
 
-+ It only works on Macs. It will never work on Windows or Linux.
-
-+ It is not configurable.
+- It only works on Macs. It will never work on Windows or Linux.
+- It is not configurable.
