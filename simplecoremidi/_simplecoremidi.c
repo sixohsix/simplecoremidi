@@ -1,3 +1,4 @@
+#include <mach/mach_time.h>
 #include <CoreMIDI/CoreMIDI.h>
 #include <Python/Python.h>
 
@@ -30,6 +31,7 @@ sendMidi(PyObject* self, PyObject* args) {
   MIDIPacketList* pktList = (MIDIPacketList*) pktListBuf;
   MIDIPacket* pkt;
   Byte midiDataToSend[1024];
+  UInt64 now;
   int i;
 
   midiData = PyTuple_GetItem(args, 0);
@@ -42,8 +44,9 @@ sendMidi(PyObject* self, PyObject* args) {
     midiDataToSend[i] = PyInt_AsLong(midiByte);
   }
 
+  now = mach_absolute_time();
   pkt = MIDIPacketListInit(pktList);
-  pkt = MIDIPacketListAdd(pktList, 1024+100, pkt, 0, nBytes, midiDataToSend);
+  pkt = MIDIPacketListAdd(pktList, 1024+100, pkt, now, nBytes, midiDataToSend);
 
   if (pkt == NULL || MIDIReceived(_cmData.midiSource, pktList)) {
     printf("failed to send the midi.\n");
