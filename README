@@ -1,8 +1,8 @@
 Simple CoreMIDI for Python
 ====
 
-Simple CoreMIDI for Python is the simplest way of using MIDI on Mac OS
-X. Period.
+Simple CoreMIDI for Python is the simplest way of using MIDI in Python
+on Mac OS X. Period.
 
 
 Installation
@@ -14,6 +14,8 @@ Installation
 Usage
 ----
 
+To send midi out from your application::
+
     from simplecoremidi import send_midi
     send_midi((0x90, 0x3c, 0x40))
 
@@ -21,14 +23,21 @@ This sends a MIDI Note On signal. To receive it you'll have to
 configure your DAW or software to receive from the "simple core midi
 source" MIDI source.
 
-That's it.
+To receive midi from another application::
+
+    from simplecoremidi import recv_midi
+    data = recv_midi()
+
+This returns all the midi data sent to the "simple core midi
+destination" MIDI destination since your last call. Put it inside a
+loop and poll it.
+
+Look at the example in the simplecoremidi/examples directory.
 
 
 Notes
 ----
 
 + It only works on Macs. It will never work on Windows or Linux.
-
-+ It only sends. Maybe it will receive someday.
 
 + It is not configurable.
