@@ -21,3 +21,8 @@ def test_can_create_source_and_send():
     source = scm.MIDISource()
     source.send(midion)
     source.send(midioff)
+
+
+def test_can_create_dest_and_recv():
+    dest = scm.MIDIDestination()
+    assert () == dest.recv()

@@ -5,12 +5,13 @@
 #include <Python/Python.h>
 
 
-typedef struct _SCMData {
+struct _SCMMIDIDestination {
   MIDIEndpointRef midiDestination;
   CFMutableDataRef receivedMidi;
-} SCMData;
+};
 
-static SCMData _scmData;
+typedef struct _SCMMIDIDestination* SCMMIDIDestinationRef;
+
 
 static MIDIClientRef _midiClient;
 
@@ -25,17 +26,39 @@ SCMGlobalMIDIClient() {
 }
 
 void
-recvMidiProc(const MIDIPacketList* pktList,
-             void* readProcRefCon,
-             void* srcConnRefCon) {
+SCMRecvMIDIProc(const MIDIPacketList* pktList,
+                void* readProcRefCon,
+                void* srcConnRefCon) {
+  SCMMIDIDestinationRef destRef = (SCMMIDIDestinationRef) readProcRefCon;
   int i;
   const MIDIPacket* pkt;
 
   pkt = &pktList->packet[0];
   for (i = 0; i < pktList->numPackets; i++) {
-    CFDataAppendBytes(_scmData.receivedMidi, pkt->data, pkt->length);
+    CFDataAppendBytes(destRef->receivedMidi, pkt->data, pkt->length);
     pkt = MIDIPacketNext(pkt);
   }
+}
+
+
+SCMMIDIDestinationRef
+SCMMIDIDestinationCreate(CFStringRef midiDestinationName) {
+  SCMMIDIDestinationRef destRef
+    = CFAllocatorAllocate(NULL, sizeof(struct _SCMMIDIDestination), 0);
+  destRef->receivedMidi = CFDataCreateMutable(NULL, 0);
+  MIDIDestinationCreate(SCMGlobalMIDIClient(),
+                        midiDestinationName,
+                        SCMRecvMIDIProc,
+                        destRef,
+                        &(destRef->midiDestination));
+  return destRef;
+}
+
+void
+SCMMIDIDestinationDispose(SCMMIDIDestinationRef destRef) {
+  MIDIEndpointDispose(destRef->midiDestination);
+  CFRelease(destRef->receivedMidi);
+  CFAllocatorDeallocate(NULL, destRef);
 }
 
 
@@ -48,36 +71,18 @@ SCMMIDIEndpointDispose(void* ptr) {
 
 static PyObject *
 SCMCreateMIDISource(PyObject* self, PyObject* args) {
-  MIDIClientRef midiClient;
   MIDIEndpointRef midiSource;
-  char* midiSourceName;
-  CFStringRef midiSourceNameCFS;
+  CFStringRef midiSourceName;
 
-  midiSourceName = PyString_AsString(PyTuple_GetItem(args, 0));
-  midiSourceNameCFS = CFStringCreateWithCString(NULL,
-                                                midiSourceName,
-                                                kCFStringEncodingUTF8);
-  midiClient = SCMGlobalMIDIClient();
-  MIDISourceCreate(midiClient, midiSourceNameCFS, &midiSource);
-  CFRelease(midiSourceNameCFS);
+  midiSourceName =
+    CFStringCreateWithCString(NULL,
+                              PyString_AsString(PyTuple_GetItem(args, 0)),
+                              kCFStringEncodingUTF8);
+  MIDISourceCreate(SCMGlobalMIDIClient(), midiSourceName, &midiSource);
+  CFRelease(midiSourceName);
 
   return PyCObject_FromVoidPtr(midiSource, SCMMIDIEndpointDispose);
 }
-
-static PyObject *
-setupMidiOutput(PyObject* self, PyObject* args) {
-  MIDIClientRef midiClient = SCMGlobalMIDIClient();
-
-  _scmData.receivedMidi = CFDataCreateMutable(kCFAllocatorDefault, 0);
-  MIDIDestinationCreate(midiClient,
-                        CFSTR("simple core midi destination"),
-                        recvMidiProc,
-                        NULL,
-                        &(_scmData.midiDestination));
-  Py_INCREF(Py_None);
-  return Py_None;
-}
-
 
 static PyObject*
 SCMSendMidi(PyObject* self, PyObject* args) {
@@ -116,37 +121,48 @@ SCMSendMidi(PyObject* self, PyObject* args) {
 
 
 static PyObject*
-recvMidi(PyObject* self, PyObject* args) {
+SCMCreateMIDIDestination(PyObject* self, PyObject* args) {
+  SCMMIDIDestinationRef destRef;
+  CFStringRef midiDestinationName;
+
+  midiDestinationName =
+    CFStringCreateWithCString(NULL,
+                              PyString_AsString(PyTuple_GetItem(args, 0)),
+                              kCFStringEncodingUTF8);
+  destRef = SCMMIDIDestinationCreate(midiDestinationName);
+  CFRelease(midiDestinationName);
+  return PyCObject_FromVoidPtr(destRef, SCMMIDIDestinationDispose);
+}
+
+
+static PyObject*
+SCMRecvMidi(PyObject* self, PyObject* args) {
   PyObject* receivedMidiT;
+  UInt8* bytePtr;
   int i;
-  Byte buf[1024];
-  CFRange byteRange;
   CFIndex numBytes;
+  SCMMIDIDestinationRef destRef
+    = (SCMMIDIDestinationRef) PyCObject_AsVoidPtr(PyTuple_GetItem(args, 0));
 
-  numBytes = CFDataGetLength(_scmData.receivedMidi);
-  if (numBytes > 1024) {
-    numBytes = 1024;
-  }
-
-  byteRange = CFRangeMake(0, numBytes);
-  CFDataGetBytes(_scmData.receivedMidi, byteRange, buf);
-  CFDataDeleteBytes(_scmData.receivedMidi, byteRange);
+  numBytes = CFDataGetLength(destRef->receivedMidi);
 
   receivedMidiT = PyTuple_New(numBytes);
-  for (i = 0; i < numBytes; i++) {
-    PyObject* midiByte = PyInt_FromLong(buf[i]);
+  bytePtr = CFDataGetMutableBytePtr(destRef->receivedMidi);
+  for (i = 0; i < numBytes; i++, bytePtr++) {
+    PyObject* midiByte = PyInt_FromLong(*bytePtr);
     PyTuple_SetItem(receivedMidiT, i, midiByte);
   }
 
+  CFDataDeleteBytes(destRef->receivedMidi, CFRangeMake(0, numBytes));
   return receivedMidiT;
 }
 
 
 static PyMethodDef SimpleCoreMidiMethods[] = {
-  {"setup_midi_output", setupMidiOutput, METH_VARARGS, "Setup midi."},
   {"send_midi", SCMSendMidi, METH_VARARGS, "Send midi data tuple via source."},
-  {"recv_midi", recvMidi, METH_VARARGS, "Receive midi data tuple."},
+  {"recv_midi", SCMRecvMidi, METH_VARARGS, "Receive midi data tuple."},
   {"create_source", SCMCreateMIDISource, METH_VARARGS, "Create a new MIDI source."},
+  {"create_destination", SCMCreateMIDIDestination, METH_VARARGS, "Create a new MIDI destination."},
   {NULL, NULL, 0, NULL}
 };
 
