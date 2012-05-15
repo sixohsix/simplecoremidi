@@ -19,7 +19,7 @@ def play_a_scale():
                    0))  # A note-off is just a note-on with velocity 0
 
         note += step
-        sleep(1)
+        sleep(0.2)
 
 if __name__=='__main__':
     while True:

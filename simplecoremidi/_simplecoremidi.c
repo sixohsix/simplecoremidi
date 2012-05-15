@@ -1,18 +1,28 @@
 #include <pthread.h>
 #include <mach/mach_time.h>
 #include <CoreMIDI/CoreMIDI.h>
+#include <CoreFoundation/CoreFoundation.h>
 #include <Python/Python.h>
 
 
 typedef struct _SCMData {
-  MIDIClientRef theMidiClient;
-  MIDIEndpointRef midiSource;
   MIDIEndpointRef midiDestination;
   CFMutableDataRef receivedMidi;
 } SCMData;
 
 static SCMData _scmData;
 
+static MIDIClientRef _midiClient;
+
+
+static MIDIClientRef
+SCMGlobalMIDIClient() {
+  if (! _midiClient) {
+    MIDIClientCreate(CFSTR("simple core midi client"), NULL, NULL,
+                     &(_midiClient));
+  }
+  return _midiClient;
+}
 
 void
 recvMidiProc(const MIDIPacketList* pktList,
@@ -29,15 +39,37 @@ recvMidiProc(const MIDIPacketList* pktList,
 }
 
 
+static void
+SCMMIDIEndpointDispose(void* ptr) {
+  MIDIEndpointRef endpoint = (MIDIEndpointRef) ptr;
+  MIDIEndpointDispose(endpoint);
+}
+
+
+static PyObject *
+SCMCreateMIDISource(PyObject* self, PyObject* args) {
+  MIDIClientRef midiClient;
+  MIDIEndpointRef midiSource;
+  char* midiSourceName;
+  CFStringRef midiSourceNameCFS;
+
+  midiSourceName = PyString_AsString(PyTuple_GetItem(args, 0));
+  midiSourceNameCFS = CFStringCreateWithCString(NULL,
+                                                midiSourceName,
+                                                kCFStringEncodingUTF8);
+  midiClient = SCMGlobalMIDIClient();
+  MIDISourceCreate(midiClient, midiSourceNameCFS, &midiSource);
+  CFRelease(midiSourceNameCFS);
+
+  return PyCObject_FromVoidPtr(midiSource, SCMMIDIEndpointDispose);
+}
+
 static PyObject *
 setupMidiOutput(PyObject* self, PyObject* args) {
-  MIDIClientCreate(CFSTR("simple core midi client"), NULL, NULL,
-                   &(_scmData.theMidiClient));
-  MIDISourceCreate(_scmData.theMidiClient, CFSTR("simple core midi source"),
-                   &(_scmData.midiSource));
+  MIDIClientRef midiClient = SCMGlobalMIDIClient();
 
   _scmData.receivedMidi = CFDataCreateMutable(kCFAllocatorDefault, 0);
-  MIDIDestinationCreate(_scmData.theMidiClient,
+  MIDIDestinationCreate(midiClient,
                         CFSTR("simple core midi destination"),
                         recvMidiProc,
                         NULL,
@@ -48,7 +80,8 @@ setupMidiOutput(PyObject* self, PyObject* args) {
 
 
 static PyObject*
-sendMidi(PyObject* self, PyObject* args) {
+SCMSendMidi(PyObject* self, PyObject* args) {
+  MIDIEndpointRef midiSource;
   PyObject* midiData;
   Py_ssize_t nBytes;
   char pktListBuf[1024+100];
@@ -58,7 +91,8 @@ sendMidi(PyObject* self, PyObject* args) {
   UInt64 now;
   int i;
 
-  midiData = PyTuple_GetItem(args, 0);
+  midiSource = (MIDIEndpointRef*) PyCObject_AsVoidPtr(PyTuple_GetItem(args, 0));
+  midiData = PyTuple_GetItem(args, 1);
   nBytes = PySequence_Size(midiData);
 
   for (i = 0; i < nBytes; i++) {
@@ -72,7 +106,7 @@ sendMidi(PyObject* self, PyObject* args) {
   pkt = MIDIPacketListInit(pktList);
   pkt = MIDIPacketListAdd(pktList, 1024+100, pkt, now, nBytes, midiDataToSend);
 
-  if (pkt == NULL || MIDIReceived(_scmData.midiSource, pktList)) {
+  if (pkt == NULL || MIDIReceived(midiSource, pktList)) {
     printf("failed to send the midi.\n");
   }
 
@@ -110,8 +144,9 @@ recvMidi(PyObject* self, PyObject* args) {
 
 static PyMethodDef SimpleCoreMidiMethods[] = {
   {"setup_midi_output", setupMidiOutput, METH_VARARGS, "Setup midi."},
-  {"send_midi", sendMidi, METH_VARARGS, "Send midi data tuple."},
+  {"send_midi", SCMSendMidi, METH_VARARGS, "Send midi data tuple via source."},
   {"recv_midi", recvMidi, METH_VARARGS, "Receive midi data tuple."},
+  {"create_source", SCMCreateMIDISource, METH_VARARGS, "Create a new MIDI source."},
   {NULL, NULL, 0, NULL}
 };
 

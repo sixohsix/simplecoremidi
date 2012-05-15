@@ -1,2 +1,1 @@
-from .core import send_midi, recv_midi
-
+from .core import send_midi, recv_midi, MIDISource
