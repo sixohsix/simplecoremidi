@@ -27,6 +27,7 @@ setup(name='simplecoremidi',
       # Get strings from http://pypi.python.org/pypi?%3Aaction=list_classifiers
       classifiers=[
         "Programming Language :: Python :: 2.7",
+        "Programming Language :: Python :: 3.3",
         "Environment :: MacOS X",
         "Intended Audience :: Developers",
         "Development Status :: 3 - Alpha",
