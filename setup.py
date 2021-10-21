@@ -5,7 +5,7 @@ version = '0.3'
 
 if sys.platform != 'darwin':
     raise Exception(
-        "simplecoremidi only works on Mac OS X (plaform: darwin). "
+        "simplecoremidi only works on Mac OS X (platform: darwin). "
         "Your system claims to be {}, which won't work.".format(sys.platform))
 
 
