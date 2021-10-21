@@ -12,9 +12,8 @@ jobs:
       - run: bandit --recursive --skip B101,B311 .
       - run: black --check . || true
       - run: codespell
-      - run: flake8 . --count --ignore=E225,E265,E302,E305,E401,F401,W391
-                      --max-complexity=10 --max-line-length=88
-                      --show-source --statistics
+      - run: flake8 . --count --ignore=E121,E123,E225,E265,E302,E305,E401,F401,W391
+                      --max-complexity=10 --max-line-length=88 --show-source --statistics
       - run: isort --check-only --profile black . || true
       - run: pip install -r requirements.txt || pip install --editable . || true
       - run: mkdir -pv .mypy_cache
