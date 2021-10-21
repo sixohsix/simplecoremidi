@@ -12,7 +12,7 @@ jobs:
       - run: bandit --recursive --skip B101,B311 .
       - run: black --check . || true
       - run: codespell
-      - run: flake8 . --count --ignore=E225,E265,E302,E305,E401,F401W391
+      - run: flake8 . --count --ignore=E225,E265,E302,E305,E401,F401,W391
                       --max-complexity=10 --max-line-length=88
                       --show-source --statistics
       - run: isort --check-only --profile black . || true
