@@ -45,7 +45,7 @@ def emitter():
         heappush_all(frames, maybe_gen_notes(frame_time))
         while frames and (frames[0][0] < frame_time):
             midi_out = heappop(frames)
-            print "emit {}".format(midi_out[1])
+            print("emit {}".format(midi_out[1]))
             source.send(midi_out[1])
 
         now = time()
